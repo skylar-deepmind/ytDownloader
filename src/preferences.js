@@ -561,8 +561,196 @@ function initPreferences() {
 		ipcRenderer.send("reload");
 	});
 
+	function escapeHtml(str) {
+		return String(str)
+			.replace(/&/g, "&amp;")
+			.replace(/</g, "&lt;")
+			.replace(/>/g, "&gt;")
+			.replace(/"/g, "&quot;")
+			.replace(/'/g, "&#039;");
+	}
+
+	function updateInputHighlight(inputId, backdropId) {
+		const inputEl = getId(inputId);
+		const backdropEl = getId(backdropId);
+		if (!inputEl || !backdropEl) return;
+
+		const val = inputEl.value || "";
+		if (!val) {
+			backdropEl.innerHTML = "";
+			return;
+		}
+
+		let html = "";
+		let lastIndex = 0;
+		const tagRegex = /%\(([^)]+)\)s/g;
+		let match;
+
+		while ((match = tagRegex.exec(val)) !== null) {
+			if (match.index > lastIndex) {
+				html += escapeHtml(val.substring(lastIndex, match.index));
+			}
+			html += `<span class="input-tag-highlight">${escapeHtml(match[0])}</span>`;
+			lastIndex = tagRegex.lastIndex;
+		}
+		if (lastIndex < val.length) {
+			html += escapeHtml(val.substring(lastIndex));
+		}
+
+		if (val.endsWith(" ")) {
+			html += "&nbsp;";
+		}
+
+		backdropEl.innerHTML = html;
+		backdropEl.scrollLeft = inputEl.scrollLeft;
+	}
+
+	function getMockValueForTag(rawKey, defaultExt = "mp4") {
+		const key = rawKey.split(/[:>]/)[0].trim().toLowerCase();
+		const mockData = {
+			id: "dQw4w9WgXcQ",
+			title: "Sample Video Title",
+			fulltitle: "Sample Video Title - Official HD Video",
+			ext: defaultExt,
+			alt_title: "Alternative Video Title",
+			description: "Sample Video Description",
+			display_id: "sample-video-id",
+			uploader: "Channel Name",
+			uploader_id: "@channel_id",
+			uploader_url: "https://youtube.com/@channel",
+			license: "Standard YouTube License",
+			creators: "Content Creator",
+			creator: "Content Creator",
+			timestamp: "1770000000",
+			upload_date: "20260814",
+			release_timestamp: "1770000000",
+			release_date: "20260814",
+			release_year: "2026",
+			modified_timestamp: "1770000000",
+			modified_date: "20260814",
+			channel: "Channel Name",
+			channel_id: "UC123456789",
+			channel_url: "https://youtube.com/channel/UC123456789",
+			channel_follower_count: "1000000",
+			channel_is_verified: "true",
+			location: "Los Angeles, CA",
+			duration: "225",
+			duration_string: "03:45",
+			view_count: "1000000",
+			concurrent_view_count: "15000",
+			like_count: "50000",
+			dislike_count: "500",
+			repost_count: "350",
+			average_rating: "4.9",
+			comment_count: "1200",
+			save_count: "2500",
+			age_limit: "0",
+			live_status: "not_live",
+			is_live: "false",
+			was_live: "false",
+			playable_in_embed: "true",
+			availability: "public",
+			media_type: "clip",
+			start_time: "0",
+			end_time: "225",
+			extractor: "youtube",
+			extractor_key: "Youtube",
+			epoch: "1770000000",
+			autonumber: "00001",
+			video_autonumber: "00001",
+			n_entries: "25",
+			playlist_id: "PL123456789",
+			playlist_title: "My Favorite Playlist",
+			playlist: "My Favorite Playlist",
+			playlist_count: "25",
+			playlist_index: "01",
+			playlist_autonumber: "00001",
+			playlist_uploader: "Channel Name",
+			playlist_uploader_id: "@channel_id",
+			playlist_channel: "Channel Name",
+			playlist_channel_id: "UC123456789",
+			playlist_webpage_url: "https://youtube.com/playlist?list=PL123456789",
+			webpage_url: "https://youtube.com/watch?v=dQw4w9WgXcQ",
+			webpage_url_basename: "watch",
+			webpage_url_domain: "youtube.com",
+			original_url: "https://youtube.com/watch?v=dQw4w9WgXcQ",
+			categories: "Music",
+			tags: "sample,video",
+			cast: "Actor One, Actor Two",
+			resolution: "1080p",
+			width: "1920",
+			height: "1080",
+			aspect_ratio: "1.78",
+			format: "1080p",
+			format_id: "137+140",
+			format_note: "1080p60",
+			fps: "60",
+			vcodec: "h264",
+			acodec: "aac",
+			abr: "128k",
+			vbr: "4500k",
+			tbr: "4628k",
+			filesize: "15.4MiB",
+			filesize_approx: "15.4MiB",
+			chapter: "Chapter 1",
+			chapter_number: "01",
+			chapter_id: "chap_01",
+			series: "Sample Series",
+			season: "Season 1",
+			season_number: "01",
+			season_id: "s01",
+			episode: "Episode 1",
+			episode_number: "01",
+			episode_id: "e01",
+			artist: "Sample Artist",
+			track: "Sample Track",
+			track_number: "01",
+			track_id: "trk01",
+			album: "Sample Album",
+			album_artist: "Sample Artist",
+			disc_number: "01",
+			genre: "Pop",
+		};
+
+		if (mockData[key] !== undefined) {
+			return mockData[key];
+		}
+
+		// Fallback formatting for any unlisted yt-dlp tag e.g. %(custom_field)s -> "Sample Custom Field"
+		const cleaned = rawKey
+			.split(/[:>]/)[0]
+			.replace(/[^a-zA-Z0-9]/g, " ")
+			.trim();
+
+		if (cleaned) {
+			const capitalized = cleaned.replace(/\b\w/g, (l) => l.toUpperCase());
+			return `Sample ${capitalized}`;
+		}
+
+		return rawKey;
+	}
+
+	// Helper to format mock previews as clean parsed output text
+	function updateTemplatePreview(inputId, previewId, defaultExt = "mp4") {
+		const inputEl = getId(inputId);
+		const previewEl = getId(previewId);
+		if (!inputEl || !previewEl) return;
+
+		const val = inputEl.value || "";
+		if (!val.trim()) {
+			previewEl.innerHTML = `<span class="preview-empty">(empty output template)</span>`;
+			return;
+		}
+
+		const parsedText = val.replace(/%\(([^)]+)\)s/g, (match, key) => {
+			return getMockValueForTag(key, defaultExt);
+		});
+
+		previewEl.textContent = parsedText;
+	}
+
 	// Dynamic configuration fields abstractions helper function
-	function bindInputToStorage(inputId, storageKey, fallbackValue, resetId) {
+	function bindInputToStorage(inputId, storageKey, fallbackValue, resetId, previewId, defaultExt, backdropId) {
 		const inputEl = getId(inputId);
 		if (!inputEl) return;
 		const savedVal = localStorage.getItem(storageKey);
@@ -573,15 +761,42 @@ function initPreferences() {
 
 		const updateInput = () => {
 			localStorage.setItem(storageKey, inputEl.value);
+			if (previewId) {
+				updateTemplatePreview(inputId, previewId, defaultExt);
+			}
+			if (backdropId) {
+				updateInputHighlight(inputId, backdropId);
+			}
 		};
 		inputEl.addEventListener("input", updateInput);
 		inputEl.addEventListener("change", updateInput);
+		if (backdropId) {
+			inputEl.addEventListener("scroll", () => {
+				const backdrop = getId(backdropId);
+				if (backdrop) backdrop.scrollLeft = inputEl.scrollLeft;
+			});
+			inputEl.addEventListener("keyup", () => updateInputHighlight(inputId, backdropId));
+			inputEl.addEventListener("focus", () => updateInputHighlight(inputId, backdropId));
+		}
 
 		if (resetId) {
 			getId(resetId)?.addEventListener("click", () => {
 				inputEl.value = fallbackValue;
 				localStorage.setItem(storageKey, fallbackValue);
+				if (previewId) {
+					updateTemplatePreview(inputId, previewId, defaultExt);
+				}
+				if (backdropId) {
+					updateInputHighlight(inputId, backdropId);
+				}
 			});
+		}
+
+		if (previewId) {
+			updateTemplatePreview(inputId, previewId, defaultExt);
+		}
+		if (backdropId) {
+			updateInputHighlight(inputId, backdropId);
 		}
 	}
 
@@ -590,25 +805,103 @@ function initPreferences() {
 		"filenameTemplateVideo",
 		"%(title)s.%(ext)s",
 		"resetFilenameTemplateVideo",
+		"previewFilenameTemplateVideo",
+		"mp4",
+		"backdropFilenameTemplateVideo",
 	);
 	bindInputToStorage(
 		"filenameTemplateAudio",
 		"filenameTemplateAudio",
 		"%(title)s.%(ext)s",
 		"resetAudioFilenameTemplate",
+		"previewFilenameTemplateAudio",
+		"mp3",
+		"backdropFilenameTemplateAudio",
 	);
 	bindInputToStorage(
 		"filenameFormat",
 		"filenameFormat",
 		"%(playlist_index)s.%(title)s.%(ext)s",
 		"resetFilenameFormat",
+		"previewFilenameFormat",
+		"mp4",
+		"backdropFilenameFormat",
 	);
 	bindInputToStorage(
 		"foldernameFormat",
 		"foldernameFormat",
 		"%(playlist_title)s",
 		"resetFoldernameFormat",
+		"previewFoldernameFormat",
+		"",
+		"backdropFoldernameFormat",
 	);
+
+	// Output template input tracker and Ctrl+Z preserving inserter
+	let lastFocusedTemplateInput = getId("filenameTemplateVideo") || getId("filenameTemplateAudio");
+	const templateInputIds = [
+		"filenameTemplateAudio",
+		"filenameTemplateVideo",
+		"filenameFormat",
+		"foldernameFormat",
+	];
+
+	templateInputIds.forEach((id) => {
+		const el = getId(id);
+		if (el) {
+			el.addEventListener("focus", () => {
+				lastFocusedTemplateInput = el;
+			});
+		}
+	});
+
+	function insertTextIntoInput(targetInput, textToInsert) {
+		if (!targetInput) return;
+		targetInput.focus();
+
+		let inserted = false;
+		try {
+			inserted = document.execCommand("insertText", false, textToInsert);
+		} catch (_) {
+			inserted = false;
+		}
+
+		if (!inserted) {
+			const start = targetInput.selectionStart ?? targetInput.value.length;
+			const end = targetInput.selectionEnd ?? targetInput.value.length;
+			targetInput.setRangeText(textToInsert, start, end, "end");
+		}
+
+		targetInput.dispatchEvent(new Event("input", { bubbles: true }));
+	}
+
+	document.querySelectorAll(".template-tag-chip").forEach((chip) => {
+		chip.addEventListener("click", () => {
+			const tag = chip.getAttribute("data-tag");
+			if (!tag) return;
+			const targetInput =
+				lastFocusedTemplateInput ||
+				getId("filenameTemplateVideo") ||
+				getId("filenameTemplateAudio");
+			insertTextIntoInput(targetInput, tag);
+		});
+	});
+
+	document.querySelectorAll(".template-preset-btn").forEach((btn) => {
+		btn.addEventListener("click", () => {
+			const preset = btn.getAttribute("data-preset");
+			if (!preset) return;
+			const targetInput =
+				lastFocusedTemplateInput ||
+				getId("filenameTemplateVideo") ||
+				getId("filenameTemplateAudio");
+			if (!targetInput) return;
+
+			targetInput.focus();
+			targetInput.select();
+			insertTextIntoInput(targetInput, preset);
+		});
+	});
 
 	// Max active downloads validation parameters
 	const maxDownloadsInput = getId("maxDownloads");
