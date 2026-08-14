@@ -29,6 +29,7 @@ const {
 	windowsStore,
 	__dirname,
 	dirname,
+	parse,
 } = window.electronAPI;
 
 const CONSTANTS = {
@@ -75,6 +76,13 @@ const CONSTANTS = {
 		SLIDER_RANGE_HIGHLIGHT: "range-highlight",
 		SUB_CHECKED: "subChecked",
 		QUIT_CHECKED: "quitChecked",
+		THUMBNAIL_CHECK: "thumbnailChecked",
+		DUPLICATE_CHECK: "duplicateChecked",
+		ASK_PATH_CHECK: "askPathChecked",
+		AUTO_NUMBER_CHECK: "autoNumberChecked",
+		ARCHIVE_PATH_CONTAINER: "archivePathContainer",
+		ARCHIVE_PATH_DISPLAY: "archivePathDisplay",
+		SELECT_ARCHIVE_BTN: "selectArchiveBtn",
 		// Popups
 		POPUP_BOX: "popupBox",
 		POPUP_BOX_MAC: "popupBoxMac",
@@ -111,6 +119,11 @@ const CONSTANTS = {
 		CLOSE_TO_TRAY: "closeToTray",
 		YT_DLP_CUSTOM_ARGS: "customYtDlpArgs",
 		YT_DLP_SOURCE: "ytdlpSource",
+		SAVE_THUMBNAIL: "saveThumbnail",
+		USE_ARCHIVE: "useArchive",
+		ARCHIVE_DIR: "archiveDir",
+		ASK_PATH: "askPath",
+		AUTO_NUMBER: "autoNumber",
 	},
 	// yt-dlp source selectable in preferences.
 	// "nightly": app-managed standalone binary kept on the nightly channel.
@@ -166,6 +179,7 @@ class YtDownloaderApp {
 			downloadControllers: new Map(),
 			downloadedItems: new Set(),
 			downloadQueue: [],
+			lastAutoIndex: {},
 			mode: "single",
 			batchQueue: [],
 			batchPreset: {
@@ -961,6 +975,44 @@ class YtDownloaderApp {
 			}
 		}
 
+		if (updateUI) {
+			const saveThumbnail =
+				localStorage.getItem(
+					CONSTANTS.LOCAL_STORAGE_KEYS.SAVE_THUMBNAIL,
+				) === "true";
+			const useArchive =
+				localStorage.getItem(
+					CONSTANTS.LOCAL_STORAGE_KEYS.USE_ARCHIVE,
+				) === "true";
+			const askPath =
+				localStorage.getItem(CONSTANTS.LOCAL_STORAGE_KEYS.ASK_PATH) ===
+				"true";
+			const autoNumber =
+				localStorage.getItem(
+					CONSTANTS.LOCAL_STORAGE_KEYS.AUTO_NUMBER,
+				) === "true";
+			const archiveDir = localStorage.getItem(
+				CONSTANTS.LOCAL_STORAGE_KEYS.ARCHIVE_DIR,
+			);
+
+			if ($(CONSTANTS.DOM_IDS.THUMBNAIL_CHECK))
+				$(CONSTANTS.DOM_IDS.THUMBNAIL_CHECK).checked = saveThumbnail;
+			if ($(CONSTANTS.DOM_IDS.DUPLICATE_CHECK)) {
+				$(CONSTANTS.DOM_IDS.DUPLICATE_CHECK).checked = useArchive;
+				const container = $(
+					CONSTANTS.DOM_IDS.ARCHIVE_PATH_CONTAINER,
+				);
+				if (container)
+					container.style.display = useArchive ? "block" : "none";
+			}
+			if ($(CONSTANTS.DOM_IDS.ASK_PATH_CHECK))
+				$(CONSTANTS.DOM_IDS.ASK_PATH_CHECK).checked = askPath;
+			if ($(CONSTANTS.DOM_IDS.AUTO_NUMBER_CHECK))
+				$(CONSTANTS.DOM_IDS.AUTO_NUMBER_CHECK).checked = autoNumber;
+			if ($(CONSTANTS.DOM_IDS.ARCHIVE_PATH_DISPLAY) && archiveDir)
+				$(CONSTANTS.DOM_IDS.ARCHIVE_PATH_DISPLAY).value = archiveDir;
+		}
+
 		// Sync quick preset defaults from preferences
 		const qualitySelect = document.getElementById("presetQualitySelect");
 		if (qualitySelect && prefs.videoQuality) {
@@ -1164,6 +1216,20 @@ class YtDownloaderApp {
 			}
 		});
 
+		ipcRenderer.on("directory-path", (event, paths) => {
+			const selectedPath = Array.isArray(paths) ? paths[0] : paths;
+			if (selectedPath) {
+				const display = $(CONSTANTS.DOM_IDS.ARCHIVE_PATH_DISPLAY);
+				if (display) {
+					display.value = selectedPath;
+					localStorage.setItem(
+						CONSTANTS.LOCAL_STORAGE_KEYS.ARCHIVE_DIR,
+						selectedPath,
+					);
+				}
+			}
+		});
+
 		ipcRenderer.on("update-downloaded", (_event, _) => {
 			$(CONSTANTS.DOM_IDS.UPDATE_POPUP).style.display = "none";
 		});
@@ -1185,6 +1251,59 @@ class YtDownloaderApp {
 		$(CONSTANTS.DOM_IDS.END_TIME).addEventListener(
 			"change",
 			this._handleTimeInputChange,
+		);
+
+		$(CONSTANTS.DOM_IDS.THUMBNAIL_CHECK)?.addEventListener(
+			"change",
+			(e) => {
+				localStorage.setItem(
+					CONSTANTS.LOCAL_STORAGE_KEYS.SAVE_THUMBNAIL,
+					e.target.checked,
+				);
+			},
+		);
+
+		$(CONSTANTS.DOM_IDS.DUPLICATE_CHECK)?.addEventListener(
+			"change",
+			(e) => {
+				const isChecked = e.target.checked;
+				localStorage.setItem(
+					CONSTANTS.LOCAL_STORAGE_KEYS.USE_ARCHIVE,
+					isChecked,
+				);
+				const container = $(
+					CONSTANTS.DOM_IDS.ARCHIVE_PATH_CONTAINER,
+				);
+				if (container)
+					container.style.display = isChecked ? "block" : "none";
+			},
+		);
+
+		$(CONSTANTS.DOM_IDS.ASK_PATH_CHECK)?.addEventListener(
+			"change",
+			(e) => {
+				localStorage.setItem(
+					CONSTANTS.LOCAL_STORAGE_KEYS.ASK_PATH,
+					e.target.checked,
+				);
+			},
+		);
+
+		$(CONSTANTS.DOM_IDS.SELECT_ARCHIVE_BTN)?.addEventListener(
+			"click",
+			() => {
+				ipcRenderer.send("get-directory");
+			},
+		);
+
+		$(CONSTANTS.DOM_IDS.AUTO_NUMBER_CHECK)?.addEventListener(
+			"change",
+			(e) => {
+				localStorage.setItem(
+					CONSTANTS.LOCAL_STORAGE_KEYS.AUTO_NUMBER,
+					e.target.checked,
+				);
+			},
 		);
 
 		this._updateSliderUI(null);
@@ -1445,9 +1564,36 @@ class YtDownloaderApp {
 	 * Handles a download request, either starting it immediately or queuing it.
 	 * @param {'video' | 'audio' | 'extract'} type The type of download.
 	 */
-	handleDownloadRequest(type) {
+	async handleDownloadRequest(type) {
 		this._updateDownloadOptionsFromUI();
+
+		let customDownloadDir = null;
+		if ($(CONSTANTS.DOM_IDS.ASK_PATH_CHECK)?.checked) {
+			customDownloadDir = await ipcRenderer.invoke("select-single-folder");
+			if (!customDownloadDir) return;
+		}
+
 		this._hideInfoPanel(true);
+
+		const effectiveDir = customDownloadDir || this.state.downloadDir;
+
+		const useArchive =
+			$(CONSTANTS.DOM_IDS.DUPLICATE_CHECK)?.checked || false;
+		const archiveDirInput =
+			$(CONSTANTS.DOM_IDS.ARCHIVE_PATH_DISPLAY)?.value?.trim() || "";
+		const checkDir =
+			useArchive && archiveDirInput ? archiveDirInput : effectiveDir;
+
+		if (useArchive) {
+			const isDup = this._checkDuplicateByTitle(
+				checkDir,
+				this.state.videoInfo.title,
+			);
+			if (isDup) {
+				this._showPopup(i18n.__("duplicateFound"), true);
+				return;
+			}
+		}
 
 		const presetQuality = document.getElementById(
 			"presetQualitySelect",
@@ -1473,6 +1619,7 @@ class YtDownloaderApp {
 			channel: this.state.videoInfo.channel,
 			thumbnail: this.state.videoInfo.thumbnail,
 			options: {...this.state.downloadOptions},
+			customDir: customDownloadDir,
 			// Capture UI values at the moment of click
 			uiSnapshot: {
 				videoFormat: videoFormatVal,
@@ -1483,6 +1630,12 @@ class YtDownloaderApp {
 				extractFormat: extractFormatVal,
 				extractQuality:
 					$(CONSTANTS.DOM_IDS.EXTRACT_QUALITY_SELECT)?.value || "0",
+				downloadThumbnail:
+					$(CONSTANTS.DOM_IDS.THUMBNAIL_CHECK)?.checked || false,
+				useArchive: useArchive,
+				archiveDir: archiveDirInput,
+				autoNumber:
+					$(CONSTANTS.DOM_IDS.AUTO_NUMBER_CHECK)?.checked || false,
 			},
 		};
 
@@ -1491,6 +1644,90 @@ class YtDownloaderApp {
 		} else {
 			this._queueDownload(downloadJob);
 		}
+	}
+
+	/**
+	 * Cleans up a title so that duplicate titles can be compared reliably.
+	 * @param {string} title The title to sanitize.
+	 * @returns {string} A lowercased, punctuation-stripped title.
+	 */
+	_sanitizeTitle(title) {
+		if (!title) return "";
+		return title
+			.replace(/[\\/*?:"<>|：？“”‘’，。、！￥（）【】]/g, "")
+			.replace(/\s/g, "")
+			.toLowerCase();
+	}
+
+	/**
+	 * Finds the highest existing "NN_" file prefix in a directory.
+	 * @param {string} dir The directory to scan.
+	 * @returns {number} The largest found index, or 0.
+	 */
+	_getMaxFileIndex(dir) {
+		if (!existsSync(dir)) return 0;
+		let maxIdx = 0;
+		const pattern = /^(\d+)_/;
+		try {
+			const files = readdirSync(dir);
+			files.forEach((file) => {
+				const match = file.match(pattern);
+				if (match) {
+					const idx = parseInt(match[1]);
+					if (!isNaN(idx) && idx > maxIdx) {
+						maxIdx = idx;
+					}
+				}
+			});
+		} catch (e) {
+			console.error("Error scanning dir for index:", e);
+		}
+		return maxIdx;
+	}
+
+	/**
+	 * Checks whether a video with the same title already exists in a folder.
+	 * Uses an exact match plus a fuzzy containment match for longer titles.
+	 * @param {string} archiveDir The folder to check.
+	 * @param {string} currentTitle The title of the incoming video.
+	 * @returns {boolean} True when a duplicate is found.
+	 */
+	_checkDuplicateByTitle(archiveDir, currentTitle) {
+		if (!existsSync(archiveDir)) return false;
+
+		const cleanTarget = this._sanitizeTitle(currentTitle);
+		const useFuzzy = cleanTarget.length > 10;
+
+		try {
+			const files = readdirSync(archiveDir);
+			for (const file of files) {
+				if (file.startsWith(".")) continue;
+
+				let nameNoExt = parse(file).name;
+				const match = nameNoExt.match(/^(\d+)_+(.*)$/);
+				if (match) nameNoExt = match[2];
+
+				const cleanFile = this._sanitizeTitle(nameNoExt);
+
+				if (cleanFile === cleanTarget) {
+					console.log(`Duplicate found (Exact): ${file}`);
+					return true;
+				}
+
+				if (useFuzzy) {
+					if (
+						cleanFile.includes(cleanTarget) ||
+						cleanTarget.includes(cleanFile)
+					) {
+						console.log(`Duplicate found (Fuzzy): ${file}`);
+						return true;
+					}
+				}
+			}
+		} catch (e) {
+			console.error("Error checking duplicates:", e);
+		}
+		return false;
 	}
 
 	/**
@@ -1766,7 +2003,9 @@ class YtDownloaderApp {
 
 		let template = videoOutputTemplate;
 
-		const outputArgs = ["-P", this.state.downloadDir, "-o", template];
+		const effectiveDir = job.customDir || this.state.downloadDir;
+
+		const outputArgs = ["-P", effectiveDir, "-o", template];
 
 		const baseArgs = [
 			"--no-playlist",
@@ -1783,6 +2022,21 @@ class YtDownloaderApp {
 				? ["--no-js-runtimes", "--js-runtime", this.state.jsRuntimePath]
 				: []),
 		];
+
+		if (!job.isBatch && uiSnapshot) {
+			if (uiSnapshot.downloadThumbnail) {
+				baseArgs.push("--write-thumbnail", "--convert-thumbnails", "jpg");
+			}
+
+			if (uiSnapshot.useArchive) {
+				const archiveDirInput = uiSnapshot.archiveDir;
+				const checkDir = archiveDirInput
+					? archiveDirInput
+					: effectiveDir;
+				const archivePath = join(checkDir, "archive.txt");
+				baseArgs.push("--download-archive", archivePath);
+			}
+		}
 
 		let downloadArgs = [];
 
@@ -1916,9 +2170,19 @@ class YtDownloaderApp {
 				}
 			}
 
+			if (uiSnapshot?.autoNumber) {
+				const diskMax = this._getMaxFileIndex(effectiveDir);
+				const lastAssigned =
+					this.state.lastAutoIndex[effectiveDir] || 0;
+				const nextIndex = Math.max(diskMax, lastAssigned) + 1;
+				this.state.lastAutoIndex[effectiveDir] = nextIndex;
+				const prefix = String(nextIndex).padStart(2, "0");
+				template = `${prefix}_${template}`;
+			}
+
 			const singleOutputArgs = [
 				"-P",
-				this.state.downloadDir,
+				effectiveDir,
 				"-o",
 				template,
 			];

@@ -373,6 +373,16 @@ function registerIpcHandlers() {
 		}
 	});
 
+	ipcMain.handle("select-single-folder", async () => {
+		if (!appState.mainWindow) return null;
+		const { canceled, filePaths } = await dialog.showOpenDialog(
+			appState.mainWindow,
+			{ properties: ["openDirectory", "createDirectory"] },
+		);
+		if (canceled || filePaths.length === 0) return null;
+		return filePaths[0];
+	});
+
 	ipcMain.on("get-directory", async () => {
 		if (!appState.mainWindow) return;
 		const { canceled, filePaths } = await dialog.showOpenDialog(

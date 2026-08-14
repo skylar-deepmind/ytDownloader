@@ -236,5 +236,13 @@
 	"clearQueue": "Clear Queue",
 	"downloadAll": "Download All",
 	"noVideosInQueue": "No videos in queue",
-	"stop": "Stop"
+	"stop": "Stop",
+	"downloadThumbnail": "Download JPG thumbnail",
+	"autoNumber": "Auto-number files",
+	"autoNumberDesc": "Prefix files with a sequential number",
+	"duplicateCheck": "Skip existing files (duplicate check)",
+	"duplicateCheckDir": "Duplicate check directory",
+	"askPath": "Ask for save location before download",
+	"browse": "Browse",
+	"duplicateFound": "Duplicate found - skipping download"
 }

@@ -398,6 +398,65 @@
                                 </label>
                             </div>
 
+                            <!-- Custom toggles grid -->
+                            <div class="home-advanced-toggles">
+                                <label class="home-toggle-card" for="thumbnailChecked">
+                                    <div class="home-toggle-info">
+                                        <span id="thumbnailTxt" class="home-toggle-title" data-translate="downloadThumbnail">Download JPG thumbnail</span>
+                                    </div>
+                                    <div class="switch">
+                                        <input id="thumbnailChecked" class="cb" type="checkbox">
+                                        <span class="slider"></span>
+                                    </div>
+                                </label>
+
+                                <label class="home-toggle-card" for="autoNumberChecked">
+                                    <div class="home-toggle-info">
+                                        <span id="autoNumberTxt" class="home-toggle-title" data-translate="autoNumber">Auto-number files</span>
+                                        <span id="autoNumberDesc" class="home-toggle-desc" data-translate="autoNumberDesc">Prefix files with a sequential number</span>
+                                    </div>
+                                    <div class="switch">
+                                        <input id="autoNumberChecked" class="cb" type="checkbox">
+                                        <span class="slider"></span>
+                                    </div>
+                                </label>
+
+                                <label class="home-toggle-card" for="duplicateChecked">
+                                    <div class="home-toggle-info">
+                                        <span id="duplicateTxt" class="home-toggle-title" data-translate="duplicateCheck">Skip existing files (duplicate check)</span>
+                                    </div>
+                                    <div class="switch">
+                                        <input id="duplicateChecked" class="cb" type="checkbox">
+                                        <span class="slider"></span>
+                                    </div>
+                                </label>
+
+                                <label class="home-toggle-card" for="askPathChecked">
+                                    <div class="home-toggle-info">
+                                        <span id="askPathTxt" class="home-toggle-title" data-translate="askPath">Ask for save location before download</span>
+                                    </div>
+                                    <div class="switch">
+                                        <input id="askPathChecked" class="cb" type="checkbox">
+                                        <span class="slider"></span>
+                                    </div>
+                                </label>
+                            </div>
+
+                            <!-- Duplicate check directory -->
+                            <div class="home-advanced-card" id="archivePathContainer" style="display: none;">
+                                <div class="home-advanced-header">
+                                    <svg class="home-advanced-icon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+                                        <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+                                    </svg>
+                                    <span id="archivePathHeader" class="home-toggle-title" data-translate="duplicateCheckDir">Duplicate check directory</span>
+                                </div>
+                                <div class="slider-wrapper">
+                                    <input type="text" id="archivePathDisplay" class="time-display" readonly value="">
+                                    <button type="button" id="selectArchiveBtn" class="btnWrapper blueBtn" data-translate="browse">Browse</button>
+                                </div>
+                            </div>
+
                             <!-- Custom yt-dlp arguments -->
                             <div class="home-advanced-card">
                                 <div class="home-advanced-header">

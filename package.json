@@ -4,7 +4,7 @@
 		"systeminformation": "^5.31.7",
 		"yt-dlp-wrap-plus": "^2.5.0"
 	},
-	"name": "ytdownloader",
+	"name": "ytdownloader-custom",
 	"version": "4.0.0",
 	"main": "main.js",
 	"scripts": {
@@ -23,12 +23,6 @@
 		"name": "Andrew",
 		"email": "aandrew.me@pm.me"
 	},
-	"publish": {
-		"provider": "github",
-		"owner": "aandrew-me",
-		"repo": "ytDownloader",
-		"private": false
-	},
 	"license": "GPL-3.0",
 	"description": "Download videos and audios from YouTube and many other sites",
 	"devDependencies": {
@@ -38,8 +32,8 @@
 		"typescript": "^5.3.3"
 	},
 	"build": {
-		"productName": "YTDownloader",
-		"appId": "io.github.aandrew_me.ytdn",
+		"productName": "YTDownloader Custom",
+		"appId": "io.github.aandrew_me.ytdn.custom",
 		"artifactName": "${productName}.${ext}",
 		"files": [
 			"./resources/**/*",
