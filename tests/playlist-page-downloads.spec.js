@@ -62,6 +62,9 @@ test.describe("Playlist Page Download Tests", () => {
 		expect(downloadCmd).toContain("-f");
 		expect(downloadCmd).toContain("-o");
 		expect(downloadCmd).toContain("--ffmpeg-location");
+		expect(downloadCmd).toContain("--write-thumbnail");
+		expect(downloadCmd).toContain("--convert-thumbnails");
+		expect(downloadCmd).toContain("jpg");
 		expect(downloadCmd.join(" ")).toContain("PL123456789");
 	});
 
@@ -94,8 +97,71 @@ test.describe("Playlist Page Download Tests", () => {
 		expect(downloadCmd).toContain("mp3");
 		expect(downloadCmd).toContain("--audio-quality");
 		expect(downloadCmd).toContain("0");
-		expect(downloadCmd).toContain("--embed-thumbnail");
+		expect(downloadCmd).toContain("--write-thumbnail");
+		expect(downloadCmd).toContain("--convert-thumbnails");
+		expect(downloadCmd).toContain("jpg");
+		const platform = await page.evaluate(() => window.electronAPI.os.platform());
+		if (platform !== "darwin") {
+			expect(downloadCmd).toContain("--embed-thumbnail");
+		}
 		expect(downloadCmd.join(" ")).toContain("PL123456789");
+	});
+
+	test("unchecking cover download omits thumbnail flags from command", async () => {
+		const playlistUrl = "https://www.youtube.com/playlist?list=PL123456789";
+
+		await page.evaluate((url) => {
+			window.electronAPI.clipboard.writeText(url);
+		}, playlistUrl);
+
+		await page.click("#pasteLink");
+		await waitForPlaylistOptions(page);
+
+		await triggerClick(page, "advancedToggle");
+		await page.uncheck("#thumbCheckedPlaylist");
+
+		await clearExecutedCommands(page);
+
+		await triggerClick(page, "download");
+
+		const commands = await getExecutedCommands(page);
+		const downloadCmd = commands[commands.length - 1];
+		expect(downloadCmd).toContain("--yes-playlist");
+		expect(downloadCmd).not.toContain("--write-thumbnail");
+		expect(downloadCmd).not.toContain("--convert-thumbnails");
+	});
+
+	test("clear downloads button removes completed items", async () => {
+		const playlistUrl = "https://www.youtube.com/playlist?list=PL123456789";
+
+		await page.evaluate((url) => {
+			window.electronAPI.clipboard.writeText(url);
+		}, playlistUrl);
+
+		await page.click("#pasteLink");
+		await waitForPlaylistOptions(page);
+
+		await clearExecutedCommands(page);
+
+		await triggerClick(page, "download");
+
+		await page.waitForFunction(() => {
+			const btn = document.getElementById("clearPlaylistBtn");
+			return btn && btn.style.display === "inline-block";
+		});
+
+		const itemCount = await page.evaluate(() =>
+			document.querySelectorAll("#listPlaylist .item").length,
+		);
+		expect(itemCount).toBeGreaterThan(0);
+
+		await page.click("#clearPlaylistBtn");
+
+		await page.waitForFunction(() => {
+			const items = document.querySelectorAll("#listPlaylist .item");
+			const btn = document.getElementById("clearPlaylistBtn");
+			return items.length === 0 && btn.style.display === "none";
+		});
 	});
 
 	test("download thumbnails produces correct yt-dlp command", async () => {

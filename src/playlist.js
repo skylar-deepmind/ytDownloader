@@ -76,7 +76,9 @@ const playlistDownloader = {
 		playlistIndexInput: getId("playlistIndex"),
 		playlistEndInput: getId("playlistEnd"),
 		subtitlesCheckbox: getId("subChecked"),
+		thumbnailCheckbox: getId("thumbCheckedPlaylist"),
 		closeHiddenBtn: getId("closeHidden"),
+		clearDownloadsBtn: getId("clearPlaylistBtn"),
 
 		playlistNameDisplay: getId("playlistName"),
 		errorMsgDisplay: getId("incorrectMsgPlaylist"),
@@ -127,7 +129,9 @@ const playlistDownloader = {
 			playlistIndexInput: container.querySelector("#playlistIndex") || getId("playlistIndex"),
 			playlistEndInput: container.querySelector("#playlistEnd") || getId("playlistEnd"),
 			subtitlesCheckbox: container.querySelector("#subCheckedPlaylist") || container.querySelector("#subChecked") || getId("subChecked"),
+			thumbnailCheckbox: container.querySelector("#thumbCheckedPlaylist") || getId("thumbCheckedPlaylist"),
 			closeHiddenBtn: container.querySelector("#closeHiddenPlaylist") || container.querySelector("#closeHidden") || getId("closeHidden"),
+			clearDownloadsBtn: container.querySelector("#clearPlaylistBtn") || getId("clearPlaylistBtn"),
 
 			playlistNameDisplay: container.querySelector("#playlistName") || getId("playlistName"),
 			errorMsgDisplay: container.querySelector("#incorrectMsgPlaylist") || container.querySelector("#incorrectMsg") || getId("incorrectMsg"),
@@ -217,7 +221,7 @@ const playlistDownloader = {
 			this.ui.videoQualitySelect.value = preferredVideo;
 		}
 		if (this.ui.videoQualitySelect && !this.ui.videoQualitySelect.value) {
-			this.ui.videoQualitySelect.value = "best";
+			this.ui.videoQualitySelect.value = "1080";
 		}
 
 		const preferredAudioFormat = localStorage.getItem("preferredAudioQuality");
@@ -291,6 +295,9 @@ const playlistDownloader = {
 		);
 		this.ui.closeHiddenBtn.addEventListener("click", () =>
 			this.hideOptions(true),
+		);
+		this.ui.clearDownloadsBtn.addEventListener("click", () =>
+			this.clearDownloadedItems(),
 		);
 
 		this.ui.preferenceWinBtn.addEventListener("click", () =>
@@ -445,7 +452,7 @@ const playlistDownloader = {
 			if (videoType === "mp4") {
 				formatArgs = [
 					"-f",
-					`bestvideo[height<=${quality}]+bestaudio[ext=m4a]/best[height<=${quality}]/best`,
+					`bvs[height=${quality}]+bestaudio[ext=m4a]/bestvideo[height<=${quality}]+bestaudio[ext=m4a]/best[height<=${quality}]/best`,
 					"--merge-output-format",
 					"mp4",
 					"--recode-video",
@@ -454,7 +461,7 @@ const playlistDownloader = {
 			} else if (videoType === "webm") {
 				formatArgs = [
 					"-f",
-					`bestvideo[height<=${quality}]+bestaudio[ext=webm]/best[height<=${quality}]/best`,
+					`bvs[height=${quality}]+bestaudio[ext=webm]/bestvideo[height<=${quality}]+bestaudio[ext=webm]/best[height<=${quality}]/best`,
 					"--merge-output-format",
 					"webm",
 					"--recode-video",
@@ -463,7 +470,7 @@ const playlistDownloader = {
 			} else {
 				formatArgs = [
 					"-f",
-					`bv*[height=${quality}]+ba/best[height=${quality}]/best[height<=${quality}]`,
+					`bvs[height=${quality}]+ba/best[height=${quality}]/best[height<=${quality}]`,
 				];
 			}
 		}
@@ -486,7 +493,14 @@ const playlistDownloader = {
 			videoType === "mp4" && isYouTube && canEmbedThumb
 				? "--embed-thumbnail"
 				: "",
+			...this.getCoverArgs(),
 		].filter(Boolean);
+	},
+
+	getCoverArgs() {
+		if (!this.ui.thumbnailCheckbox?.checked) return [];
+
+		return ["--write-thumbnail", "--convert-thumbnails", "jpg"];
 	},
 
 	getAudioArgs() {
@@ -503,7 +517,8 @@ const playlistDownloader = {
 				`ba[ext=${format}]/ba`,
 				"--embed-metadata",
 				canEmbedThumb ? "--embed-thumbnail" : "",
-			];
+				...this.getCoverArgs(),
+			].filter(Boolean);
 		}
 
 		return [
@@ -517,7 +532,8 @@ const playlistDownloader = {
 			canEmbedThumb
 				? "--embed-thumbnail"
 				: "",
-		];
+			...this.getCoverArgs(),
+		].filter(Boolean);
 	},
 
 	getThumbnailArgs() {
@@ -661,6 +677,7 @@ const playlistDownloader = {
 		this.state.isDownloading = false;
 		this.ui.stopDownloadBtn.style.display = "none";
 		this.ui.pasteLinkBtn.style.display = "inline-block";
+		this.ui.clearDownloadsBtn.style.display = "inline-block";
 		const targetCount = count !== undefined ? count : (this.state.currentLocalCount || 0);
 		const lastProgress = getId(`p${targetCount}`);
 		if (lastProgress) {
@@ -822,14 +839,18 @@ const playlistDownloader = {
 		this.ui.errorMsgDisplay.style.display = "none";
 		this.ui.stopDownloadBtn.style.display = "none";
 
-		if (!justHide) {
-			this.ui.playlistNameDisplay.textContent = `${window.i18n.__(
-				"processing",
-			)}...`;
-			this.ui.pasteLinkBtn.style.display = "none";
-			this.ui.openDownloadsBtn.style.display = "inline-block";
-			this.ui.stopDownloadBtn.style.display = "inline-block";
+		if (justHide) {
+			this.ui.clearDownloadsBtn.style.display = "none";
+			return;
 		}
+
+		this.ui.playlistNameDisplay.textContent = `${window.i18n.__(
+			"processing",
+		)}...`;
+		this.ui.pasteLinkBtn.style.display = "none";
+		this.ui.openDownloadsBtn.style.display = "inline-block";
+		this.ui.stopDownloadBtn.style.display = "inline-block";
+		this.ui.clearDownloadsBtn.style.display = "none";
 	},
 
 	finishDownload(count) {
@@ -846,6 +867,7 @@ const playlistDownloader = {
 			lastProgress.textContent = window.i18n.__("fileSaved");
 		this.ui.pasteLinkBtn.style.display = "inline-block";
 		this.ui.openDownloadsBtn.style.display = "inline-block";
+		this.ui.clearDownloadsBtn.style.display = "inline-block";
 
 		const notify = new Notification("ytDownloader", {
 			body: window.i18n.__("playlistDownloaded"),
@@ -853,6 +875,15 @@ const playlistDownloader = {
 		});
 
 		notify.onclick = () => this.openDownloadsFolder();
+	},
+
+	clearDownloadedItems() {
+		const items = this.ui.downloadList.querySelectorAll(".item");
+		items.forEach((item) => {
+			item.classList.add("item-fade-out");
+			setTimeout(() => item.remove(), 160);
+		});
+		this.ui.clearDownloadsBtn.style.display = "none";
 	},
 
 	showError(error) {

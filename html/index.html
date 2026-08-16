@@ -559,14 +559,14 @@
                     <div id="videoBox">
                         <label id="videoFormat" data-translate="videoQuality">Select Video Quality </label>
                         <select id="select" class="select">
-                            <option value="best" id="bestVideoOption" data-translate="best" selected>Best</option>
+                            <option value="best" id="bestVideoOption" data-translate="best">Best</option>
                             <option value="worst" id="worstVideoOption" data-translate="qualityWorst">Worst</option>
                             <option value="144">144p</option>
                             <option value="240">240p</option>
                             <option value="360">360p</option>
                             <option value="480">480p</option>
                             <option value="720">720p (HD)</option>
-                            <option value="1080">1080p (FHD)</option>
+                            <option value="1080" selected>1080p (FHD)</option>
                             <option value="1440">1440p</option>
                             <option value="2160">2160p (4k)</option>
                         </select>
@@ -636,6 +636,11 @@
                             <span id="subTxtPlaylist" data-translate="downloadSubtitlesAvailable">Download subtitles if available</span>
                             <input id="subCheckedPlaylist" class="cb" type="checkbox">
                         </div>
+                        <div class="advancedItem">
+                            <p id="thumbHeaderPlaylist" data-translate="downloadThumbnailPlaylist">Download video thumbnails</p>
+                            <span id="thumbTxtPlaylist" data-translate="downloadThumbnailPlaylistDesc">Save each video's cover image alongside the download</span>
+                            <input id="thumbCheckedPlaylist" class="cb" type="checkbox" checked>
+                        </div>
                         <br>
                         <div class="flexContainer" style="gap: 12px; margin-top: 10px;">
                             <button class="submitBtn" id="downloadThumbnails" data-translate="downloadThumbnails">Download thumbnails</button>
@@ -655,6 +660,7 @@
                 </div>
                 <br><br>
                 <div id="listPlaylist"></div>
+                <button class="blueBtn" id="clearPlaylistBtn" data-translate="clearDownloads">Clear Downloads</button>
             </section>
 
             <!-- View 4: Video Compressor -->

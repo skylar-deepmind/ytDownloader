@@ -37,6 +37,19 @@ test.describe("Format Selector Tests", () => {
 		}
 	});
 
+	test("default video format selection is the smallest 1080p option", async () => {
+		await page.evaluate(() => {
+			localStorage.setItem("showMoreFormats", "true");
+		});
+		await pasteAndFetchInfo(page);
+
+		const selected = await page.evaluate(() => {
+			const select = document.getElementById("videoFormatSelect");
+			return select.slim ? select.slim.getSelected() : select.value;
+		});
+		expect(selected).toEqual(["248|webm|1080|vp9"]);
+	});
+
 	test("video download uses selector-based -f instead of exact format ids", async () => {
 		await pasteAndFetchInfo(page);
 		await clearExecutedCommands(page);
@@ -56,7 +69,7 @@ test.describe("Format Selector Tests", () => {
 
 		const fIndex = downloadCmd.indexOf("-f");
 		const formatSelector = downloadCmd[fIndex + 1];
-		expect(formatSelector).toContain("bestvideo[height<=1080][ext=mp4]");
+		expect(formatSelector).toContain("bvs[height=1080][ext=mp4]");
 		expect(formatSelector).toContain("[vcodec^=avc1]");
 		expect(formatSelector).toContain("+bestaudio[ext=m4a]");
 		expect(formatSelector).toContain("best[height<=1080][ext=mp4]");

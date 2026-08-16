@@ -97,6 +97,8 @@
 	"linkAdded": "Link added",
 	"downloadThumbnails": "Download thumbnails",
 	"saveVideoLinksToFile": "Save video links to a file",
+	"downloadThumbnailPlaylist": "Download video thumbnails",
+	"downloadThumbnailPlaylistDesc": "Save each video's cover image alongside the download",
 	"closeAppToTray": "Close app to system tray",
 	"openApp": "Open app",
 	"pasteVideoLink": "Paste video link",

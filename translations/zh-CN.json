@@ -85,6 +85,8 @@
 	"linkAdded": "已添加链接",
 	"downloadThumbnails": "下载缩略图",
 	"saveVideoLinksToFile": "将视频链接保存至文件",
+	"downloadThumbnailPlaylist": "同时下载视频封面",
+	"downloadThumbnailPlaylistDesc": "下载视频时一并保存其封面图片",
 	"closeAppToTray": "关闭应用程序到系统托盘",
 	"openApp": "打开应用程序",
 	"pasteVideoLink": "粘贴视频链接",

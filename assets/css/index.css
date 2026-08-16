@@ -1136,7 +1136,8 @@ button {
 	width: 140px;
 }
 
-#clearBtn {
+#clearBtn,
+#clearPlaylistBtn {
 	display: none;
 }
 

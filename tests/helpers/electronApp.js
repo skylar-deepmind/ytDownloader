@@ -172,7 +172,16 @@ async function launchApp(customLocalStorage = {}, customMetadata = DEFAULT_MOCK_
 					(callbacks["progress"] || []).forEach((cb) =>
 						cb({ percent: 100 }),
 					);
-					(callbacks["ytDlpEvent"] || []).forEach((cb) => cb());
+					if (args.includes("--yes-playlist")) {
+						const itemInfo = `[Item info]:::1:::"Test Playlist Item":::${
+							window.__mockMetadata.thumbnail || ""
+						}`;
+						(callbacks["ytDlpEvent"] || []).forEach((cb) =>
+							cb("Item info", itemInfo),
+						);
+					} else {
+						(callbacks["ytDlpEvent"] || []).forEach((cb) => cb());
+					}
 					(callbacks["close"] || []).forEach((cb) => cb(0));
 				}
 			}, 10);

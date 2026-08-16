@@ -2072,7 +2072,7 @@ class YtDownloaderApp {
 				if (presetFormat === "mp4") {
 					formatArgs = [
 						"-f",
-						`bestvideo[height<=${presetQuality}]+bestaudio[ext=m4a]/best[height<=${presetQuality}]/best`,
+						`bvs[height=${presetQuality}]+bestaudio[ext=m4a]/bestvideo[height<=${presetQuality}]+bestaudio[ext=m4a]/best[height<=${presetQuality}]/best`,
 						"--merge-output-format",
 						"mp4",
 						"--recode-video",
@@ -2081,7 +2081,7 @@ class YtDownloaderApp {
 				} else if (presetFormat === "webm") {
 					formatArgs = [
 						"-f",
-						`bestvideo[height<=${presetQuality}]+bestaudio[ext=webm]/best[height<=${presetQuality}]/best`,
+						`bvs[height=${presetQuality}]+bestaudio[ext=webm]/bestvideo[height<=${presetQuality}]+bestaudio[ext=webm]/best[height<=${presetQuality}]/best`,
 						"--merge-output-format",
 						"webm",
 						"--recode-video",
@@ -2090,7 +2090,7 @@ class YtDownloaderApp {
 				} else {
 					formatArgs = [
 						"-f",
-						`bv*[height<=${presetQuality}]+ba/best[height<=${presetQuality}]/best`,
+						`bvs[height=${presetQuality}]+ba/bv*[height<=${presetQuality}]+ba/best[height<=${presetQuality}]/best`,
 						"--merge-output-format",
 						presetFormat || "mkv",
 					];
@@ -2160,12 +2160,15 @@ class YtDownloaderApp {
 				const heightFilter = videoHeight
 					? `[height<=${videoHeight}]`
 					: "";
+				const exactHeightFilter = videoHeight
+					? `[height=${videoHeight}]`
+					: "";
 				const vcodecFilter = codecPrefix
 					? `[vcodec^=${codecPrefix}]`
 					: "";
 
 				if (videoExt && heightFilter && vcodecFilter) {
-					const videoSelector = `bestvideo${heightFilter}[ext=${videoExt}]${vcodecFilter}`;
+					const videoSelector = `bvs${exactHeightFilter}[ext=${videoExt}]${vcodecFilter}`;
 					if (audioForVideoFormat_id === "none") {
 						formatSelector = videoSelector;
 					} else {
@@ -2492,8 +2495,6 @@ class YtDownloaderApp {
 			? videoCodec
 			: [...availableCodecs].pop();
 
-		let isAVideoSelected = false;
-
 		const videoOptions = [];
 		const audioOptions = [];
 
@@ -2526,17 +2527,6 @@ class YtDownloaderApp {
 					(format.ext === "webm" || format.vcodec?.startsWith("vp"))
 				) {
 					return;
-				}
-
-				let isSelected = false;
-
-				if (
-					!isAVideoSelected &&
-					format.height === bestMatchHeight &&
-					format.vcodec?.startsWith(finalCodec)
-				) {
-					isSelected = true;
-					isAVideoSelected = true;
 				}
 
 				const quality = `${format.height || "???"}p${format.fps === 60 ? "60" : ""}`;
@@ -2591,7 +2581,8 @@ class YtDownloaderApp {
 				videoOptions.push({
 					text: optionTextFallback,
 					value: `${format.format_id}|${format.ext}|${format.height}|${format.vcodec}`,
-					selected: isSelected,
+					selected: false,
+					sizeInMB,
 					html: htmlContent,
 				});
 
@@ -2637,6 +2628,46 @@ class YtDownloaderApp {
 				}
 			}
 		});
+
+		// Default to the smallest file size among the options at the target
+		// height (bestMatchHeight). Tie-break by the preferred codec, then
+		// list order. When no sizes are known at that height, fall back to
+		// the preferred codec.
+		const heightCandidates = videoOptions.filter((option) => {
+			const optionHeight = Number(
+				String(option.value).split("|")[2],
+			);
+			return optionHeight === bestMatchHeight;
+		});
+		let selectedVideoOption = null;
+		const sizedCandidates = heightCandidates.filter(
+			(option) =>
+				option.sizeInMB !== null && option.sizeInMB !== undefined,
+		);
+		if (sizedCandidates.length > 0) {
+			const minSize = Math.min(
+				...sizedCandidates.map((option) => option.sizeInMB),
+			);
+			const smallest = sizedCandidates.filter(
+				(option) => option.sizeInMB === minSize,
+			);
+			selectedVideoOption =
+				smallest.find((option) =>
+					String(option.value)
+						.split("|")[3]
+						?.startsWith(finalCodec),
+				) || smallest[0];
+		} else if (heightCandidates.length > 0) {
+			selectedVideoOption =
+				heightCandidates.find((option) =>
+					String(option.value)
+						.split("|")[3]
+						?.startsWith(finalCodec),
+				) || heightCandidates[0];
+		}
+		if (selectedVideoOption) {
+			selectedVideoOption.selected = true;
+		}
 
 		const hasAudioTrack = formats.some(
 			(f) =>
