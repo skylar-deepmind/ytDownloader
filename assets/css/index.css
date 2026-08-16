@@ -1784,6 +1784,10 @@ input[type="range"]::-webkit-slider-thumb:hover {
 	height: 50px;
 }
 
+#subtitleSelectContainer .ss-main {
+	max-width: min(400px, 100%);
+}
+
 .ss-arrow path {
 	stroke: var(--text) !important;
 	opacity: 0.6;

@@ -13,6 +13,13 @@ const DEFAULT_MOCK_METADATA = {
 	extractor_key: "Youtube",
 	url: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
 	webpage_url: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+	subtitles: {
+		en: [{ext: "vtt", name: "English"}],
+		"zh-Hans": [{ext: "vtt", name: "Chinese (Simplified)"}],
+	},
+	automatic_captions: {
+		fr: [{ext: "vtt", name: "French (auto)"}],
+	},
 	formats: [
 		{
 			format_id: "137",
@@ -21,6 +28,7 @@ const DEFAULT_MOCK_METADATA = {
 			fps: 30,
 			vcodec: "avc1.640028",
 			acodec: "none",
+			video_ext: "mp4",
 			filesize: 50000000,
 		},
 		{
@@ -30,6 +38,7 @@ const DEFAULT_MOCK_METADATA = {
 			fps: 30,
 			vcodec: "vp9",
 			acodec: "none",
+			video_ext: "webm",
 			filesize: 45000000,
 		},
 		{
@@ -39,6 +48,7 @@ const DEFAULT_MOCK_METADATA = {
 			fps: 30,
 			vcodec: "avc1.47001f",
 			acodec: "mp4a.40.2",
+			video_ext: "mp4",
 			filesize: 25000000,
 		},
 		{
@@ -47,7 +57,9 @@ const DEFAULT_MOCK_METADATA = {
 			format_note: "medium",
 			vcodec: "none",
 			acodec: "mp4a.40.2",
+			video_ext: "none",
 			filesize: 3000000,
+			tbr: 129,
 		},
 		{
 			format_id: "251",
@@ -55,7 +67,29 @@ const DEFAULT_MOCK_METADATA = {
 			format_note: "tiny",
 			vcodec: "none",
 			acodec: "opus",
+			video_ext: "none",
 			filesize: 3500000,
+			tbr: 118,
+		},
+		{
+			format_id: "139",
+			ext: "m4a",
+			format_note: "tiny",
+			vcodec: "none",
+			acodec: "mp4a.40.5",
+			video_ext: "none",
+			filesize: 3000000,
+			tbr: 49,
+		},
+		{
+			format_id: "249",
+			ext: "webm",
+			format_note: "tiny",
+			vcodec: "none",
+			acodec: "opus",
+			video_ext: "none",
+			filesize: 3500000,
+			tbr: 48,
 		},
 	],
 };

@@ -476,13 +476,13 @@ const playlistDownloader = {
 		return [
 			...formatArgs,
 			"--embed-metadata",
-			this.ui.subtitlesCheckbox.checked ? "--write-subs" : "",
-			this.ui.subtitlesCheckbox.checked ? "--sub-format" : "",
-			this.ui.subtitlesCheckbox.checked ? "srt/best" : "",
-			this.ui.subtitlesCheckbox.checked ? "--convert-subs" : "",
-			this.ui.subtitlesCheckbox.checked ? "srt" : "",
-			this.ui.subtitlesCheckbox.checked ? "--sub-langs" : "",
-			this.ui.subtitlesCheckbox.checked ? "all" : "",
+			this.ui.subtitlesCheckbox?.checked ? "--write-subs" : "",
+			this.ui.subtitlesCheckbox?.checked ? "--sub-format" : "",
+			this.ui.subtitlesCheckbox?.checked ? "srt/best" : "",
+			this.ui.subtitlesCheckbox?.checked ? "--convert-subs" : "",
+			this.ui.subtitlesCheckbox?.checked ? "srt" : "",
+			this.ui.subtitlesCheckbox?.checked ? "--sub-langs" : "",
+			this.ui.subtitlesCheckbox?.checked ? "all" : "",
 			videoType === "mp4" && isYouTube && canEmbedThumb
 				? "--embed-thumbnail"
 				: "",

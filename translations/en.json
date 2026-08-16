@@ -42,6 +42,7 @@
 	"subtitles": "Subtitles",
 	"downloadSubtitlesAvailable": "Download subtitles if available",
 	"downloadSubtitlesAuto": "Download auto generated subtitles",
+	"originSubtitle": "Origin (original language)",
 	"extractAudioFromVideo": "Extract Audio from Video",
 	"extract": "Extract",
 	"downloadingNecessaryFiles": "Downloading necessary files",

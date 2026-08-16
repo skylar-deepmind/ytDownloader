@@ -56,6 +56,9 @@ const CONSTANTS = {
 		URL_INPUTS: ".url",
 		AUDIO_PRESENT_SECTION: "audioPresent",
 		QUIT_APP_BTN: "quitAppBtn",
+		// Subtitles
+		SUBTITLE_SELECT_CONTAINER: "subtitleSelectContainer",
+		SUBTITLE_LANG_SELECT: "subtitleLangSelect",
 		// Format Selectors
 		VIDEO_FORMAT_SELECT: "videoFormatSelect",
 		AUDIO_FORMAT_SELECT: "audioFormatSelect",
@@ -74,7 +77,6 @@ const CONSTANTS = {
 		MIN_SLIDER: "min-slider",
 		MAX_SLIDER: "max-slider",
 		SLIDER_RANGE_HIGHLIGHT: "range-highlight",
-		SUB_CHECKED: "subChecked",
 		QUIT_CHECKED: "quitChecked",
 		THUMBNAIL_CHECK: "thumbnailChecked",
 		DUPLICATE_CHECK: "duplicateChecked",
@@ -153,6 +155,8 @@ class YtDownloaderApp {
 				duration: 0,
 				extractor_key: "",
 				url: "",
+				subtitles: {},
+				automatic_captions: {},
 			},
 			// Download options
 			downloadOptions: {
@@ -1539,9 +1543,12 @@ class YtDownloaderApp {
 				duration: durationInt,
 				is_live: isLive,
 				extractor_key: metadata.extractor_key,
+				subtitles: metadata.subtitles || {},
+				automatic_captions: metadata.automatic_captions || {},
 			};
 			this.setVideoLength(durationInt);
 			this._populateFormatSelectors(metadata.formats || []);
+			this._populateSubtitleSelector();
 			this._displayInfoPanel();
 		} catch (error) {
 			console.log(error);
@@ -1600,11 +1607,20 @@ class YtDownloaderApp {
 		)?.value;
 		const presetFormat =
 			document.getElementById("presetFormatSelect")?.value;
+		const readSelectValue = (el) => {
+			if (el && el.slim) {
+				const selected = el.slim.getSelected();
+				if (Array.isArray(selected) && selected.length > 0) {
+					return selected[0];
+				}
+			}
+			return el ? el.value : "";
+		};
 		const videoFormatVal =
-			$(CONSTANTS.DOM_IDS.VIDEO_FORMAT_SELECT)?.value ||
+			readSelectValue($(CONSTANTS.DOM_IDS.VIDEO_FORMAT_SELECT)) ||
 			(presetQuality ? presetQuality : "1080");
 		const audioFormatVal =
-			$(CONSTANTS.DOM_IDS.AUDIO_FORMAT_SELECT)?.value ||
+			readSelectValue($(CONSTANTS.DOM_IDS.AUDIO_FORMAT_SELECT)) ||
 			presetFormat ||
 			"mp3";
 		const extractFormatVal =
@@ -1624,8 +1640,9 @@ class YtDownloaderApp {
 			uiSnapshot: {
 				videoFormat: videoFormatVal,
 				audioForVideoFormat:
-					$(CONSTANTS.DOM_IDS.AUDIO_FOR_VIDEO_FORMAT_SELECT)?.value ||
-					"best",
+					readSelectValue(
+						$(CONSTANTS.DOM_IDS.AUDIO_FOR_VIDEO_FORMAT_SELECT),
+					) || "best",
 				audioFormat: audioFormatVal,
 				extractFormat: extractFormatVal,
 				extractQuality:
@@ -1999,7 +2016,7 @@ class YtDownloaderApp {
 			audioOutputTemplate,
 		} = this.state.preferences;
 
-		let format_id, ext, audioForVideoFormat_id, audioFormat;
+		let format_id, ext, audioForVideoFormat_id, formatSelector;
 
 		let template = videoOutputTemplate;
 
@@ -2121,7 +2138,7 @@ class YtDownloaderApp {
 			}
 		} else {
 			if (type === "video") {
-				const [videoFid, videoExt, _, videoCodec] =
+				const [videoFid, videoExt, videoHeight, videoCodec] =
 					uiSnapshot.videoFormat.split("|");
 				const [audioFid, audioExt] =
 					uiSnapshot.audioForVideoFormat.split("|");
@@ -2138,13 +2155,39 @@ class YtDownloaderApp {
 				) {
 					ext = "mkv";
 				}
-				audioFormat =
-					audioForVideoFormat_id === "none"
-						? ""
-						: `+${audioForVideoFormat_id}`;
+
+				const codecPrefix = (videoCodec || "").split(".")[0];
+				const heightFilter = videoHeight
+					? `[height<=${videoHeight}]`
+					: "";
+				const vcodecFilter = codecPrefix
+					? `[vcodec^=${codecPrefix}]`
+					: "";
+
+				if (videoExt && heightFilter && vcodecFilter) {
+					const videoSelector = `bestvideo${heightFilter}[ext=${videoExt}]${vcodecFilter}`;
+					if (audioForVideoFormat_id === "none") {
+						formatSelector = videoSelector;
+					} else {
+						const audioSelExt =
+							finalAudioExt === "opus" ? "webm" : finalAudioExt;
+						formatSelector =
+							`${videoSelector}+bestaudio[ext=${audioSelExt}]/` +
+							`best${heightFilter}[ext=${videoExt}]${vcodecFilter}/best`;
+					}
+				} else {
+					formatSelector =
+						audioForVideoFormat_id === "none"
+							? `${videoFid}`
+							: `${videoFid}+${audioForVideoFormat_id}`;
+				}
 			} else if (type === "audio") {
 				[format_id, ext] = uiSnapshot.audioFormat.split("|");
 				ext = ext === "webm" ? "opus" : ext;
+				const audioSelExt = ext === "opus" ? "webm" : ext;
+				formatSelector = audioSelExt
+					? `bestaudio[ext=${audioSelExt}]/best`
+					: format_id;
 
 				template = audioOutputTemplate;
 			} else {
@@ -2209,7 +2252,9 @@ class YtDownloaderApp {
 				];
 			} else {
 				const formatString =
-					type === "video" ? `${format_id}${audioFormat}` : format_id;
+					type === "video" || type === "audio"
+						? formatSelector
+						: format_id;
 				downloadArgs = [
 					"-f",
 					formatString,
@@ -2340,10 +2385,17 @@ class YtDownloaderApp {
 			this.state.downloadOptions.rangeOption = "--download-sections";
 		}
 
-		if ($(CONSTANTS.DOM_IDS.SUB_CHECKED).checked) {
+		const subSelect = $(CONSTANTS.DOM_IDS.SUBTITLE_LANG_SELECT);
+		let subLangs = "";
+		if (subSelect && subSelect.slim) {
+			const selected = subSelect.slim.getSelected() || [];
+			subLangs = selected.filter(Boolean).join(",");
+		}
+
+		if (subLangs) {
 			this.state.downloadOptions.subs =
 				"--write-subs --sub-format srt/best --convert-subs srt";
-			this.state.downloadOptions.subLangs = "--sub-langs all";
+			this.state.downloadOptions.subLangs = `--sub-langs ${subLangs}`;
 		} else {
 			this.state.downloadOptions.subs = "";
 			this.state.downloadOptions.subLangs = "";
@@ -2364,6 +2416,17 @@ class YtDownloaderApp {
 		const noAudioTxt = i18n.__("noAudio");
 		$(CONSTANTS.DOM_IDS.AUDIO_FOR_VIDEO_FORMAT_SELECT).innerHTML =
 			`<option value="none|none">${noAudioTxt}</option>`;
+
+		const subtitleContainer = $(
+			CONSTANTS.DOM_IDS.SUBTITLE_SELECT_CONTAINER,
+		);
+		if (subtitleContainer) subtitleContainer.style.display = "none";
+		const subtitleSelect = $(CONSTANTS.DOM_IDS.SUBTITLE_LANG_SELECT);
+		if (subtitleSelect && subtitleSelect.slim) {
+			subtitleSelect.slim.destroy();
+			subtitleSelect.slim = null;
+		}
+
 		const pasteBtn = $(CONSTANTS.DOM_IDS.PASTE_URL_BTN);
 		if (pasteBtn) pasteBtn.disabled = true;
 	}
@@ -2433,6 +2496,11 @@ class YtDownloaderApp {
 
 		const videoOptions = [];
 		const audioOptions = [];
+
+		// Track the best audio track (highest bitrate, then size)
+		let bestAudio = null;
+		let bestAudioTbr = -1;
+		let bestAudioSize = -1;
 
 		formats.forEach((format) => {
 			let sizeInMB = null;
@@ -2554,6 +2622,19 @@ class YtDownloaderApp {
 					value: `${format.format_id}|${audioExt}`,
 					html: htmlContent,
 				});
+
+				// Track the best audio track (highest bitrate, then size)
+				const audioTbr = format.tbr || 0;
+				const audioSize =
+					format.filesize || format.filesize_approx || 0;
+				if (
+					audioTbr > bestAudioTbr ||
+					(audioTbr === bestAudioTbr && audioSize > bestAudioSize)
+				) {
+					bestAudioTbr = audioTbr;
+					bestAudioSize = audioSize;
+					bestAudio = audioOptions[audioOptions.length - 1];
+				}
 			}
 		});
 
@@ -2569,6 +2650,11 @@ class YtDownloaderApp {
 			audioSection.style.display = hasAudioTrack ? "block" : "none";
 		}
 
+		// Default to the best audio track (highest bitrate, then size)
+		if (bestAudio) {
+			bestAudio.selected = true;
+		}
+
 		const videoSelectEl = $(CONSTANTS.DOM_IDS.VIDEO_FORMAT_SELECT);
 		const audioSelectEl = $(CONSTANTS.DOM_IDS.AUDIO_FORMAT_SELECT);
 		const audioForVideoSelectEl = $(
@@ -2581,30 +2667,48 @@ class YtDownloaderApp {
 			if (domElement.slim) {
 				domElement.slim.destroy();
 			}
+			// Clear a stale SlimSelect marker so a fresh instance can mount
+			if (domElement.dataset && domElement.dataset.ssid) {
+				delete domElement.dataset.ssid;
+			}
 
-			domElement.slim = new SlimSelect({
-				select: domElement,
-				data: optionsData,
-				settings: {
-					showSearch: true,
-					contentLocation: document.body,
-				},
-				events: {
-					afterOpen: () => {
-						document
-							.querySelectorAll(".ss-option.ss-selected")
-							.forEach((el) => {
-								el.addEventListener(
-									"click",
-									() => {
-										domElement.slim.close();
-									},
-									{once: true},
-								);
-							});
+			try {
+				domElement.slim = new SlimSelect({
+					select: domElement,
+					data: optionsData,
+					settings: {
+						showSearch: true,
+						contentLocation: document.body,
 					},
-				},
-			});
+					events: {
+						afterOpen: () => {
+							document
+								.querySelectorAll(".ss-option.ss-selected")
+								.forEach((el) => {
+									el.addEventListener(
+										"click",
+										() => {
+											domElement.slim.close();
+										},
+										{once: true},
+									);
+								});
+						},
+					},
+				});
+
+				// SlimSelect derives single-select state from the native
+				// element, so force the intended selection (from the data's
+				// `selected` flags) and keep the native value in sync.
+				const selectedValue = (optionsData.find((o) => o.selected) || {})
+					.value;
+				if (selectedValue) {
+					domElement.slim.setSelected([selectedValue]);
+				}
+			} catch (error) {
+				console.error("Failed to mount SlimSelect:", error);
+				domElement.slim = null;
+			}
 		};
 
 		if (videoOptions.length > 0) {
@@ -2634,6 +2738,83 @@ class YtDownloaderApp {
 		});
 
 		mountSlimSelect(audioForVideoSelectEl, audioForVideoOptions);
+	}
+
+	/**
+	 * Populates the subtitle language multi-select in the info panel from
+	 * the video's existing subtitle tracks. The "origin" (original language)
+	 * option is always listed first.
+	 */
+	_populateSubtitleSelector() {
+		const container = $(CONSTANTS.DOM_IDS.SUBTITLE_SELECT_CONTAINER);
+		const selectEl = $(CONSTANTS.DOM_IDS.SUBTITLE_LANG_SELECT);
+		if (!container || !selectEl) return;
+
+		const {subtitles = {}, automatic_captions = {}} = this.state.videoInfo;
+		const manualLangs = Object.keys(subtitles || {});
+		const autoLangs = Object.keys(automatic_captions || {});
+
+		if (selectEl.slim) {
+			selectEl.slim.destroy();
+			selectEl.slim = null;
+		}
+
+		if (manualLangs.length === 0 && autoLangs.length === 0) {
+			container.style.display = "none";
+			return;
+		}
+
+		const langFormatter = new Intl.DisplayNames(
+			[navigator.language || "en"],
+			{type: "language"},
+		);
+		const getLanguageName = (code) => {
+			if (!code) return "";
+			try {
+				const baseCode = code.split("-")[0];
+				const name = langFormatter.of(baseCode);
+				return name
+					? name.charAt(0).toUpperCase() + name.slice(1)
+					: code;
+			} catch (e) {
+				return code;
+			}
+		};
+
+		const sortByName = (a, b) =>
+			getLanguageName(a).localeCompare(getLanguageName(b));
+
+		const optionsData = [
+			{
+				text: i18n.__("originSubtitle"),
+				value: "origin",
+				id: "origin",
+				selected: true,
+			},
+			...manualLangs.slice().sort(sortByName).map((code) => ({
+				text: getLanguageName(code),
+				value: code,
+				id: code,
+			})),
+			...autoLangs.slice().sort(sortByName).map((code) => ({
+				text: `${getLanguageName(code)} (${i18n.__(
+					"downloadSubtitlesAuto",
+				)})`,
+				value: code,
+				id: code,
+			})),
+		];
+
+		selectEl.slim = new SlimSelect({
+			select: selectEl,
+			data: optionsData,
+			settings: {
+				showSearch: true,
+				contentLocation: document.body,
+			},
+		});
+
+		container.style.display = "block";
 	}
 
 	/**

@@ -41,6 +41,7 @@
 	"subtitles": "字幕",
 	"downloadSubtitlesAvailable": "若有字幕则下载",
 	"downloadSubtitlesAuto": "下载自动生成的字幕",
+	"originSubtitle": "原始语言 (Origin)",
 	"extractAudioFromVideo": "从视频中提取音频",
 	"extract": "提取",
 	"downloadingNecessaryFiles": "正在下载必要文件",

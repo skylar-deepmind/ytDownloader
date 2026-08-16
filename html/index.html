@@ -270,6 +270,11 @@
                     </div>
                     <p id="title" data-translate="title">Title </p>
 
+                    <div id="subtitleSelectContainer" class="separationBox" style="display: none;">
+                        <label class="formatSelect" id="subtitleSelectLabel" data-translate="subtitles">Subtitles</label>
+                        <select id="subtitleLangSelect" multiple></select>
+                    </div>
+
                     <div class="videoAudioContainer">
                         <div id="videoList">
                             <div class="separationBox">
@@ -374,19 +379,8 @@
                                 </div>
                             </div>
 
-                            <!-- Subtitles & Close App Toggles Grid -->
+                            <!-- Close App Toggle -->
                             <div class="home-advanced-toggles">
-                                <label class="home-toggle-card" for="subChecked">
-                                    <div class="home-toggle-info">
-                                        <span id="subHeader" class="home-toggle-title" data-translate="subtitles">Subtitles</span>
-                                        <span id="subTxt" class="home-toggle-desc" data-translate="downloadSubtitlesAvailable">Download subtitles if available</span>
-                                    </div>
-                                    <div class="switch">
-                                        <input id="subChecked" class="cb" type="checkbox">
-                                        <span class="slider"></span>
-                                    </div>
-                                </label>
-
                                 <label class="home-toggle-card" for="quitChecked">
                                     <div class="home-toggle-info">
                                         <span id="quitTxt" class="home-toggle-title" data-translate="closeAppOnFinish">Close app when download finishes</span>
